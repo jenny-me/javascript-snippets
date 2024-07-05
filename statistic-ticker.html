@@ -1,0 +1,84 @@
+<html>
+  <head>
+    <title>Statistic Ticker</title>
+    <style>
+      .statistics {
+        margin: 2em auto;
+        width: 90%;
+        max-width: 500px;
+        display: flex;
+      }
+      .statistic {
+        flex: 1;
+
+        color: brown;
+        font-size: 36px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="statistics">
+      <div class="statistic">
+        <span class="countup">3.5</span>M
+      </div>
+      <div class="statistic">
+        <span class="countup">70</span>%
+      </div>
+      <div class="statistic">
+        $<span class="countup">70</span>M
+      </div>
+    </div>
+
+    <script>
+       (function() {
+        const animationDuration = 2000;
+        const frameDuration = 1000 / 60;
+        const totalFrames = Math.round( animationDuration / frameDuration );
+        const easeOutQuad = t => t * ( 2 - t );
+
+        const animateCountUp = el => {
+          let frame = 0;
+          const startValue = el.innerHTML;
+          let isDecimal = startValue.indexOf('.') > 0;
+          let countTo =  parseFloat( startValue );
+          
+          const counter = setInterval( () => {
+            frame++;
+            const progress = easeOutQuad( frame / totalFrames );
+            let currentCount = Math.round( countTo * progress );
+            if ( isDecimal ) {
+              currentCount = parseFloat( countTo * progress ).toFixed(1);
+            } else {
+              currentCount = Math.round( countTo * progress );
+            }
+
+            if ( parseFloat( el.innerHTML ) !== currentCount ) {
+              el.innerHTML = currentCount;
+            }
+
+            if ( frame === totalFrames ) {
+              clearInterval( counter );
+            }
+          }, frameDuration );
+        };
+
+        const runAnimations = () => {
+          const countupEls = document.querySelectorAll( '.countup' );
+          countupEls.forEach( animateCountUp );
+        };
+
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              runAnimations();
+              return;
+            }
+          });
+        });
+
+        observer.observe(document.querySelector('.statistic'));
+       })();
+    </script>
+  </body>
+</html>

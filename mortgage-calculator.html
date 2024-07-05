@@ -1,0 +1,287 @@
+<html>
+  <head>
+    <title>Mortgage Calculator</title>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <script>
+      let fixedRates = [
+        { 'term': 30, 'rate': 6.875 },
+        { 'term': 30, 'rate': 6.500 },
+        { 'term': 20, 'rate': 6.500 },
+        { 'term': 20, 'rate': 6.250 },
+        { 'term': 15, 'rate': 6.500 },
+        { 'term': 15, 'rate': 6.000 },
+        { 'term': 10, 'rate': 6.500 },
+        { 'term': 10, 'rate': 6.000 },
+      ];
+      let jumboRates = [
+        { 'term': 30, 'rate': 7.000 },
+        { 'term': 30, 'rate': 6.750 },
+        { 'term': 20, 'rate': 6.875 },
+        { 'term': 20, 'rate': 6.625 },
+        { 'term': 15, 'rate': 6.750 },
+        { 'term': 15, 'rate': 6.500 },
+      ];
+      let jumboCutoff = 766550;
+    </script>
+    <style>
+      .calculator {
+        margin: 2em auto;
+        width: 90%;
+        max-width: 800px;
+        display: flex;
+        gap: 2em;
+      }
+      .calc-filters {
+        flex: 1;
+      }
+      .calc-results {
+        flex: 3;
+        text-align: center;
+      }
+      .field {
+        margin-bottom: 1em;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="calculator">
+      <div class="calc-filters">
+        <form id="calculator" class>
+          <div class="filter-block">
+            <div class="field">
+              <label for="price">Property Price</label>
+              <input
+                type="text"
+                name="price"
+                id="price"
+                required
+                placeholder="$0"
+                value="350000" />
+            </div>
+            <div class="field">
+              <label for="payment">Down Payment</label>
+              <input
+                type="text"
+                name="payment"
+                id="payment"
+                required
+                placeholder="$0"
+                value="70000" />
+            </div>
+            <div class="field">
+              <label for="estimatedTax">Estimated Annual Property Tax</label>
+              <input
+                type="text"
+                name="estimatedTax"
+                id="estimatedTax"
+                required
+                placeholder="$0"
+                value="7000" />
+            </div>
+            <div class="field">
+              <label for="insurance">Estimated Annual Insurance</label>
+              <input
+                type="text"
+                name="insurance"
+                id="insurance"
+                required
+                placeholder="$0"
+                value="1200" />
+            </div>
+          </div>
+          <div class="filter-block">
+            <div class="field">
+              <label for="term">Loan Term</label>
+              <select name="term" id="term">
+                <option value="30" selected>30 years</option>
+                <option value="20">20 years</option>
+                <option value="15">15 years</option>
+                <option value="10">10 years</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="rate">Interest Rate</label>
+              <input
+                type="text"
+                name="rate"
+                id="rate"
+                placeholder="2.875%"
+                required
+                value="6.875" />
+            </div>
+          </div>
+          <div class="filter-button">
+            <button
+              type="button"
+              onclick="calculateMonthlyPayment();">
+              Calculate
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="calc-results">
+        <div class="results-payment">
+          <h1 id="rateType">Fixed Mortgage</h1>
+          <p class="subheader">Estimated Monthly Payment</p>
+          <h2 id="monthlyPayment">$0.00</h2>
+        </div>
+        <div class="results-graph">
+          <canvas id="calculatorGraph" width="800" height="450"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      var ctx = document.getElementById("calculatorGraph").getContext("2d");
+      var translations = {
+          labels: [
+              "Principal",
+              "Insurance",
+              "Taxes"
+          ],
+          datasetLabel: "Estimated Monthly Payment"
+      };
+
+
+      let monthlyPayment = 0,
+        monthlyInsurance = 0,
+        monthlyTaxes = 0;
+
+      const data = {
+        labels: translations.labels,
+        datasets: [
+          {
+            label: translations.datasetLabel,
+            data: [monthlyPayment, monthlyInsurance, monthlyTaxes],
+            backgroundColor: [
+              "rgb(20, 120, 210)",
+              "rgb(10, 80, 150)",
+              "rgb(0, 40, 60)",
+            ],
+            hoverOffset: 4,
+          },
+        ],
+      };
+
+      const config = {
+        type: "doughnut",
+        data: data,
+        options: {
+          aspectRatio: 2,
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+            },
+          },
+        },
+      };
+      var myChart = new Chart(ctx, config);
+
+      const termField = document.getElementById("term");
+      const rateType = document.getElementById("rateType");
+
+      termField.addEventListener("change", function () {
+        let loanAmount = cleanValue(document.getElementById("price").value);
+        let downPayment = cleanValue(document.getElementById("payment").value);
+
+        let amountFinancing = loanAmount - downPayment;
+        let rateTable = fixedRates;
+
+        let isJumbo = amountFinancing > jumboCutoff;
+
+        if (isJumbo) {
+          rateTable = jumboRates;
+          rateType.textContent = "Jumbo Fixed Mortgage";
+        } else {
+          rateTable = fixedRates;
+          rateType.textContent = "Fixed Mortgage";
+        }
+
+        const result = rateTable.find(({ term }) => term == this.value);
+        let newRate = result ? result.rate : null;
+
+        document.getElementById("rate").value = newRate;
+      });
+
+      function checkRateType() {
+        let loanAmount = cleanValue(document.getElementById("price").value);
+        let downPayment = cleanValue(document.getElementById("payment").value);
+
+        let amountFinancing = loanAmount - downPayment;
+        let isJumbo = amountFinancing > jumboCutoff;
+
+        if (isJumbo) {
+          rateType.textContent = "Jumbo Fixed Mortgage";
+        } else {
+          rateType.textContent = "Fixed Mortgage";
+        }
+      }
+
+      function calculateMonthlyPayment() {
+        let form = document.getElementById("calculator");
+
+        if (form.checkValidity() === false) {
+          form.classList.add("hasErrors");
+        } else {
+          form.classList.remove("hasErrors");
+
+          let loanAmount = cleanValue(document.getElementById("price").value);
+          let downPayment = cleanValue(
+            document.getElementById("payment").value
+          );
+          let monthlyPaymentCount = document.getElementById("term").value * 12;
+          let interestRate =
+            cleanValue(document.getElementById("rate").value) * 0.01;
+          let taxes = cleanValue(document.getElementById("estimatedTax").value);
+          let insurance = cleanValue(
+            document.getElementById("insurance").value
+          );
+
+          let interestRatePerMonth = interestRate / 12;
+          let amountFinancing = loanAmount - downPayment;
+
+          checkRateType();
+
+          monthlyPayment =
+            (amountFinancing *
+              interestRatePerMonth *
+              Math.pow(1 + interestRatePerMonth, monthlyPaymentCount)) /
+            (Math.pow(1 + interestRatePerMonth, monthlyPaymentCount) - 1);
+          monthlyTaxes = taxes / 12;
+          monthlyInsurance = insurance / 12;
+          monthlyPaymentWithTaxesAndInsurance =
+            monthlyPayment + monthlyTaxes + monthlyInsurance;
+
+          document.getElementById("monthlyPayment").innerHTML =
+            "$" + monthlyPaymentWithTaxesAndInsurance.toFixed(2);
+          let dataSet = [monthlyPayment, monthlyInsurance, monthlyTaxes];
+
+          updateChart(dataSet);
+        }
+
+        return false;
+      }
+      function cleanValue(val) {
+        let newVal = val.replace(/[^0-9. ]/gi, "");
+
+        if (newVal === "") {
+          return 0;
+        }
+
+        return parseFloat(newVal);
+      }
+      function updateChart(dataSet) {
+        const chart = Chart.getChart("calculatorGraph");
+        chart.data.datasets[0].data = dataSet;
+        chart.update();
+      }
+
+      checkRateType();
+      calculateMonthlyPayment()
+    </script>
+  </body>
+</html>
